@@ -1,7 +1,6 @@
 package audit
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -10,29 +9,36 @@ import (
 	"strings"
 	"time"
 
+	"hypercloud4-webhook/util"
+
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/golang-collections/go-datastructures/queue"
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 	types "k8s.io/apimachinery/pkg/types"
 	"k8s.io/apiserver/pkg/apis/audit"
 	"k8s.io/klog"
 )
 
-func init() {
-	Queue = queue.New(512)
+type urlParam struct {
+	Namespace string   `json:"namespace"`
+	Resource  string   `json:"resource"`
+	StartTime string   `json:"startTime"`
+	EndTime   string   `json:"endTime"`
+	Limit     string   `json:"limit"`
+	Offset    string   `json:"offset"`
+	Code      string   `json:"code"`
+	Verb      string   `json:"verb"`
+	Sort      []string `json:"sort"`
 }
 
-var Queue *queue.Queue
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
+type response struct {
+	EventList audit.EventList `json:"eventList"`
+	RowsCount int64           `json:"rowsCount"`
 }
 
 func AddAudit(w http.ResponseWriter, r *http.Request) {
 	var body []byte
 	var eventList audit.EventList
+
 	if r.Body != nil {
 		if data, err := ioutil.ReadAll(r.Body); err == nil {
 			body = data
@@ -40,7 +46,7 @@ func AddAudit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.Unmarshal(body, &eventList); err != nil {
-		klog.Error(err)
+		util.SetResponse(w, "", nil, http.StatusInternalServerError)
 	}
 
 	contentType := r.Header.Get("Content-Type")
@@ -48,27 +54,98 @@ func AddAudit(w http.ResponseWriter, r *http.Request) {
 		klog.Errorf("contentType=%s, expect application/json", contentType)
 		return
 	}
-	insertE(&eventList.Items)
+
+	for _, event := range eventList.Items {
+		if event.ResponseStatus.Status == "" && (event.ResponseStatus.Code/100) == 2 {
+			event.ResponseStatus.Status = "Success"
+		}
+	}
+
+	insert(eventList.Items)
+	if len(hub.clients) > 0 {
+		hub.broadcast <- eventList
+	}
+	util.SetResponse(w, "", nil, http.StatusOK)
+}
+
+func AddAuditBatch(w http.ResponseWriter, r *http.Request) {
+	klog.Info("AddAuditBatch")
+	var body []byte
+	var event audit.Event
+	if r.Body != nil {
+		if data, err := ioutil.ReadAll(r.Body); err == nil {
+			body = data
+		}
+	}
+
+	if err := json.Unmarshal(body, &event); err != nil {
+		klog.Error(err)
+		util.SetResponse(w, "", nil, http.StatusInternalServerError)
+	}
+
+	contentType := r.Header.Get("Content-Type")
+	if contentType != "application/json" {
+		klog.Errorf("contentType=%s, expect application/json", contentType)
+		return
+	}
+
+	event.AuditID = types.UID(uuid.New().String())
+	if event.StageTimestamp.Time.IsZero() {
+		event.StageTimestamp.Time = time.Now()
+	}
+
+	if len(eventBuffer.buffer) < bufferSize {
+		eventBuffer.buffer <- event
+	} else {
+		klog.Error("event is dropped.")
+	}
+	util.SetResponse(w, "", nil, http.StatusOK)
 }
 
 func GetAudit(w http.ResponseWriter, r *http.Request) {
-	db, err := sql.Open("mysql", "root:tmax@tcp(mysql-service.hypercloud4-system.svc:3306)/audit?parseTime=true")
-	if err != nil {
-		klog.Error(err)
-	}
-	defer db.Close()
+	urlParam := urlParam{}
 
-	namespace := r.URL.Query().Get("namespace")
-	resource := r.URL.Query().Get("resource")
-	startTime := r.URL.Query().Get("startTime")
-	endTime := r.URL.Query().Get("endTime")
-	limit := r.URL.Query().Get("limit")
-	offset := r.URL.Query().Get("offset")
-	code := r.URL.Query().Get("code")
-	sort := r.URL.Query()["sort"]
+	urlParam.Namespace = r.URL.Query().Get("namespace")
+	urlParam.Resource = r.URL.Query().Get("resource")
+	urlParam.Limit = r.URL.Query().Get("limit")
+	urlParam.Offset = r.URL.Query().Get("offset")
+	urlParam.Code = r.URL.Query().Get("code")
+	urlParam.Verb = r.URL.Query().Get("verb")
+	urlParam.Sort = r.URL.Query()["sort"]
+
+	if r.URL.Query().Get("startTime") != "" && r.URL.Query().Get("endTime") != "" {
+		sn, _ := strconv.ParseInt(r.URL.Query().Get("startTime"), 10, 64)
+		en, _ := strconv.ParseInt(r.URL.Query().Get("endTime"), 10, 64)
+		urlParam.StartTime = time.Unix(sn, 0).UTC().String()
+		urlParam.EndTime = time.Unix(en, 0).UTC().String()
+	}
+
+	query := queryBuilder(urlParam)
+
+	eventList, count := get(query)
+
+	response := response{
+		EventList: eventList,
+		RowsCount: count,
+	}
+
+	util.SetResponse(w, "", response, http.StatusOK)
+}
+
+func queryBuilder(fc urlParam) string {
+
+	namespace := fc.Namespace
+	resource := fc.Resource
+	startTime := fc.StartTime
+	endTime := fc.EndTime
+	limit := fc.Limit
+	offset := fc.Offset
+	code := fc.Code
+	verb := fc.Verb
+	sort := fc.Sort
 
 	var b strings.Builder
-	b.WriteString("select * from audit.audit where 1=1 ")
+	b.WriteString("select *, count(*) over() as full_count from audit where 1=1 ")
 
 	if startTime != "" && endTime != "" {
 		b.WriteString("and stagetimestamp between '")
@@ -90,10 +167,16 @@ func GetAudit(w http.ResponseWriter, r *http.Request) {
 		b.WriteString("' ")
 	}
 
+	if verb != "" {
+		b.WriteString("and verb = '")
+		b.WriteString(verb)
+		b.WriteString("' ")
+	}
+
 	if code != "" {
 		codeNum, _ := strconv.ParseInt(code, 10, 32)
 		lowerBound := (codeNum / 100) * 100
-		upperBound := lowerBound + 100
+		upperBound := lowerBound + 99
 		b.WriteString("and code between '")
 		b.WriteString(fmt.Sprintf("%v", lowerBound))
 		b.WriteString("' and '")
@@ -134,67 +217,5 @@ func GetAudit(w http.ResponseWriter, r *http.Request) {
 	query := b.String()
 
 	klog.Info("query: ", query)
-
-	eventList := get(query)
-	eventList.Kind = "EventList"
-	eventList.APIVersion = "audit.k8s.io/v1"
-
-	respBytes, err := json.Marshal(eventList)
-	if err != nil {
-		klog.Error(err)
-	}
-	klog.Infof("sending response: %s", respBytes)
-
-	// json을 return
-	if err != nil {
-		klog.Error(err)
-	}
-	if _, err := w.Write(respBytes); err != nil {
-		klog.Error(err)
-	}
-}
-
-func AddAuditAuth(w http.ResponseWriter, r *http.Request) {
-	var body []byte
-	var eventList audit.EventList
-	if r.Body != nil {
-		if data, err := ioutil.ReadAll(r.Body); err == nil {
-			body = data
-		}
-	}
-
-	if err := json.Unmarshal(body, &eventList); err != nil {
-		klog.Error(err)
-	}
-
-	contentType := r.Header.Get("Content-Type")
-	if contentType != "application/json" {
-		klog.Errorf("contentType=%s, expect application/json", contentType)
-		return
-	}
-
-	for _, item := range eventList.Items {
-		item.AuditID = types.UID(uuid.New().String())
-		item.ObjectRef = new(audit.ObjectReference)
-		item.ObjectRef.APIGroup = AUTH_APIGROUP
-		item.ObjectRef.APIVersion = AUTH_APIVERSION
-		item.ObjectRef.Resource = AUTH_RESOURCE
-		item.Stage = AUTH_STAGE
-		item.StageTimestamp.Time = time.Now()
-
-		if item.ResponseStatus.Code/100 == 2 {
-			item.ResponseStatus.Status = "Success"
-			item.ResponseStatus.Message = item.Verb + " sucess"
-		} else {
-			item.ResponseStatus.Status = "Failure"
-			item.ResponseStatus.Message = item.Verb + " failed"
-		}
-
-		Queue.Put(item)
-		if Queue.Len() >= 500 {
-			items, _ := Queue.Get(Queue.Len())
-			InsertI(&items)
-		}
-
-	}
+	return query
 }

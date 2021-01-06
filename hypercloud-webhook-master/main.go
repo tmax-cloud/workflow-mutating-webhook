@@ -3,25 +3,21 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"k8s.io/klog"
-
-	"encoding/json"
-
-	"io/ioutil"
 
 	"k8s.io/api/admission/v1beta1"
 
 	admission "hypercloud4-webhook/admission"
 	audit "hypercloud4-webhook/audit"
-	util "hypercloud4-webhook/util"
 )
 
 type admitFunc func(v1beta1.AdmissionReview) *v1beta1.AdmissionResponse
@@ -33,6 +29,7 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 			body = data
 		}
 	}
+	klog.Infof("Request body: %s\n", body)
 
 	contentType := r.Header.Get("Content-Type")
 	if contentType != "application/json" {
@@ -40,14 +37,12 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 		return
 	}
 
-	klog.Info(fmt.Sprintf("handling request: %s", body))
-
 	requestedAdmissionReview := v1beta1.AdmissionReview{}
 	responseAdmissionReview := v1beta1.AdmissionReview{}
 
 	if err := json.Unmarshal(body, &requestedAdmissionReview); err != nil {
 		klog.Error(err)
-		responseAdmissionReview.Response = util.ToAdmissionResponse(err)
+		responseAdmissionReview.Response = admission.ToAdmissionResponse(err)
 	} else {
 		responseAdmissionReview.Response = admit(requestedAdmissionReview)
 	}
@@ -56,23 +51,25 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 
 	respBytes, err := json.Marshal(responseAdmissionReview)
 
-	klog.Infof("sending response: %s", respBytes)
+	klog.Infof("Response body: %s\n", respBytes)
 
 	if err != nil {
 		klog.Error(err)
-		responseAdmissionReview.Response = util.ToAdmissionResponse(err)
+		responseAdmissionReview.Response = admission.ToAdmissionResponse(err)
 	}
 	if _, err := w.Write(respBytes); err != nil {
 		klog.Error(err)
-		responseAdmissionReview.Response = util.ToAdmissionResponse(err)
+		responseAdmissionReview.Response = admission.ToAdmissionResponse(err)
 	}
 }
 
 func serveMetadata(w http.ResponseWriter, r *http.Request) {
+	klog.Infof("Http request: method=%s, uri=%s", r.Method, r.URL.Path)
 	serve(w, r, admission.AddResourceMeta)
 }
 
 func serveAudit(w http.ResponseWriter, r *http.Request) {
+	klog.Infof("Http request: method=%s, uri=%s", r.Method, r.URL.Path)
 	switch r.Method {
 	case http.MethodGet:
 		audit.GetAudit(w, r)
@@ -85,8 +82,58 @@ func serveAudit(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func serveAuditAuth(w http.ResponseWriter, r *http.Request) {
-	audit.AddAuditAuth(w, r)
+func serveAuditBatch(w http.ResponseWriter, r *http.Request) {
+	klog.Infof("Http request: method=%s, uri=%s", r.Method, r.URL.Path)
+	audit.AddAuditBatch(w, r)
+}
+
+func serveAuditWss(w http.ResponseWriter, r *http.Request) {
+	klog.Infof("Http request: method=%s, uri=%s", r.Method, r.URL.Path)
+	audit.ServeWss(w, r)
+}
+
+func serveSidecarInjectionForPod(w http.ResponseWriter, r *http.Request) {
+	klog.Infof("Http request: method=%s, uri=%s", r.Method, r.URL.Path)
+	serve(w, r, admission.InjectionForPod)
+}
+func serveSidecarInjectionForDeploy(w http.ResponseWriter, r *http.Request) {
+	klog.Infof("Http request: method=%s, uri=%s", r.Method, r.URL.Path)
+	serve(w, r, admission.InjectionForDeploy)
+}
+func serveSidecarInjectionForRs(w http.ResponseWriter, r *http.Request) {
+	klog.Infof("Http request: method=%s, uri=%s", r.Method, r.URL.Path)
+	serve(w, r, admission.InjectionForRs)
+}
+func serveSidecarInjectionForSts(w http.ResponseWriter, r *http.Request) {
+	klog.Infof("Http request: method=%s, uri=%s", r.Method, r.URL.Path)
+	serve(w, r, admission.InjectionForSts)
+}
+func serveSidecarInjectionForDs(w http.ResponseWriter, r *http.Request) {
+	klog.Infof("Http request: method=%s, uri=%s", r.Method, r.URL.Path)
+	serve(w, r, admission.InjectionForDs)
+}
+func serveSidecarInjectionForCj(w http.ResponseWriter, r *http.Request) {
+	klog.Infof("Http request: method=%s, uri=%s", r.Method, r.URL.Path)
+	serve(w, r, admission.InjectionForCj)
+}
+func serveSidecarInjectionForJob(w http.ResponseWriter, r *http.Request) {
+	klog.Infof("Http request: method=%s, uri=%s", r.Method, r.URL.Path)
+	serve(w, r, admission.InjectionForJob)
+}
+func serveSidecarInjectionForTest(w http.ResponseWriter, r *http.Request) {
+	klog.Infof("Http request: method=%s, uri=%s", r.Method, r.URL.Path)
+	serve(w, r, admission.InjectionForTest)
+}
+
+func serveTest(w http.ResponseWriter, r *http.Request) {
+	klog.Infof("Http request: method=%s, uri=%s", r.Method, r.URL.Path)
+	var body []byte
+	if r.Body != nil {
+		if data, err := ioutil.ReadAll(r.Body); err == nil {
+			body = data
+		}
+	}
+	klog.Info("Request body: \n", string(body))
 }
 
 var (
@@ -96,47 +143,47 @@ var (
 )
 
 func main() {
-	flag.IntVar(&port, "port", 8443, "hypercloud-webhook server port")
-	flag.StringVar(&certFile, "certFile", "/run/secrets/tls/server.crt", "hypercloud-webhook server cert")
-	flag.StringVar(&keyFile, "keyFile", "/run/secrets/tls/server.key", "x509 Private key file for TLS connection")
+	flag.IntVar(&port, "port", 8443, "hypercloud4-workflow-webhook server port")
+	flag.StringVar(&certFile, "certFile", "/run/secrets/tls/tls.crt", "hypercloud4-workflow-webhook server cert")
+	flag.StringVar(&keyFile, "keyFile", "/run/secrets/tls/tls.key", "x509 Private key file for TLS connection")
+	flag.StringVar(&admission.SidecarContainerImage, "sidecarImage", "fluent/fluent-bit:1.5-debug", "Fluent-bit image name.")
 	flag.Parse()
 
-	// crt와 key를 불러와서 변수에 저장
+	//crt, key를 불러와 변수에 저장
 	keyPair, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
 		klog.Errorf("Failed to load key pair: %s", err)
 	}
 
-	// URI에 맞는 handler 함수를 호출 (req multiplexer)
+	//URI에 맞는 handler 함수 호출 - 지금은 한개만 필요
 	mux := http.NewServeMux()
-	mux.HandleFunc("/metadata", serveMetadata)
-	mux.HandleFunc("/audit", serveAudit)
-	mux.HandleFunc("/audit/authentication", serveAuditAuth)
+	mux.HandleFunc("/api/webhook/metadata", serveMetadata)/*
+	mux.HandleFunc("/api/webhook/audit", serveAudit)
+	mux.HandleFunc("/api/webhook/audit/batch", serveAuditBatch)
+	mux.HandleFunc("/api/webhook/audit/websocket", serveAuditWss)
+	mux.HandleFunc("/api/webhook/inject/pod", serveSidecarInjectionForPod)
+	mux.HandleFunc("/api/webhook/inject/deployment", serveSidecarInjectionForDeploy)
+	mux.HandleFunc("/api/webhook/inject/replicaset", serveSidecarInjectionForRs)
+	mux.HandleFunc("/api/webhook/inject/statefulset", serveSidecarInjectionForSts)
+	mux.HandleFunc("/api/webhook/inject/daemonset", serveSidecarInjectionForDs)
+	mux.HandleFunc("/api/webhook/inject/cronjob", serveSidecarInjectionForCj)
+	mux.HandleFunc("/api/webhook/inject/job", serveSidecarInjectionForJob)
+	mux.HandleFunc("/api/webhook/inject/test", serveSidecarInjectionForTest)
+	mux.HandleFunc("/api/webhook/test", serveTest)*/
 
 	// HTTPS 서버 설정
 	whsvr := &http.Server{
-		Addr:      fmt.Sprintf(":%d", port),                              // 서버의 IP:PORT 지정
-		Handler:   mux,                                                   // Req 처리할 handler 입력
-		TLSConfig: &tls.Config{Certificates: []tls.Certificate{keyPair}}, // 인증서 설정
+		Addr:      fmt.Sprintf(":%d", port),
+		Handler:   mux,
+		TLSConfig: &tls.Config{Certificates: []tls.Certificate{keyPair}},
 	}
 
 	klog.Info("Starting webhook server...")
 
-	// HTTPS 서버 시작
 	go func() {
+		// if err := whsvr.ListenAndServe(); err != nil { //HTTPS로 서버 시작
 		if err := whsvr.ListenAndServeTLS("", ""); err != nil { //HTTPS로 서버 시작
 			klog.Errorf("Failed to listen and serve webhook server: %s", err)
-		}
-	}()
-
-	go func() {
-		for {
-			if audit.Queue.Len() > 0 {
-				items, _ := audit.Queue.Get(audit.Queue.Len())
-				audit.InsertI(&items)
-			}
-			waitTime := time.NewTimer(time.Second * 10)
-			<-waitTime.C
 		}
 	}()
 
