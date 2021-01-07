@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  generation: 1
+  labels:
+    hypercloud4: workflow-webhook
+  name: hypercloud4-workflow-webhook
+  namespace: hypercloud4-system
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      hypercloud4: workflow-webhook
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        hypercloud4: workflow-webhook
+    spec:
+      containers:
+      - env:
+        - name: TZ
+          value: Asia/Seoul
+        image: atcham/test:testing
+        imagePullPolicy: Always
+        name: hypercloud4-workflow-webhook
+        ports:
+        - containerPort: 8443
+          name: webhook
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /run/secrets/tls
+          name: hypercloud4-workflow-webhook-certs
+          readOnly: true
+      dnsPolicy: ClusterFirst
+      nodeSelector:
+        kubernetes.io/hostname: minikube
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: hypercloud4-workflow-webhook-certs
+        secret:
+          defaultMode: 420
+          secretName: hypercloud4-workflow-webhook-certs
