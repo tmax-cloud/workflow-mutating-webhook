@@ -1,5 +1,5 @@
 # workflow-mutating-webhook
-mutating webhook for workflow
+argo-workflow 리소스에 적절한 ServiceAccount를 맵핑하기 위한 웹훅입니다.
 
 # build 방법
 go build .
