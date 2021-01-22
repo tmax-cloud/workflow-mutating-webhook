@@ -180,13 +180,14 @@ func main() {
 
 	klog.Info("Starting webhook server...")
 
+	fmt.Println("test1")
 	go func() {
 		// if err := whsvr.ListenAndServe(); err != nil { //HTTPS로 서버 시작
 		if err := whsvr.ListenAndServeTLS("", ""); err != nil { //HTTPS로 서버 시작
 			klog.Errorf("Failed to listen and serve webhook server: %s", err)
 		}
 	}()
-
+	fmt.Println("test2")
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	<-sigCh

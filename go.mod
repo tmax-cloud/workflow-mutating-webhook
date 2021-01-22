@@ -3,7 +3,7 @@ module hypercloud4-webhook
 go 1.14
 
 require (
-	github.com/argoproj/argo v2.5.2+incompatible // indirect
+	github.com/argoproj/argo v0.0.0-20210104234559-93ee530126cc
 	github.com/coyove/jsonbuilder v0.0.0-20160414062945-90ee6d2c3c43
 	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/go-sql-driver/mysql v1.5.0
