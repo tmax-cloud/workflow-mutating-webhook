@@ -68,6 +68,11 @@ func serveMetadata(w http.ResponseWriter, r *http.Request) {
 	serve(w, r, admission.AddResourceMeta)
 }
 
+func serveWorkflowTemplate(w http.ResponseWriter, r *http.Request) {
+	klog.Infof("Http request: method=%s, uri=%s", r.Method, r.URL.Path)
+	serve(w, r, admission.AddResourceMeta)
+}
+
 func serveAudit(w http.ResponseWriter, r *http.Request) {
 	klog.Infof("Http request: method=%s, uri=%s", r.Method, r.URL.Path)
 	switch r.Method {
@@ -157,19 +162,9 @@ func main() {
 
 	//URI에 맞는 handler 함수 호출 - 지금은 한개만 필요
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/webhook/metadata", serveMetadata)/*
-	mux.HandleFunc("/api/webhook/audit", serveAudit)
-	mux.HandleFunc("/api/webhook/audit/batch", serveAuditBatch)
-	mux.HandleFunc("/api/webhook/audit/websocket", serveAuditWss)
-	mux.HandleFunc("/api/webhook/inject/pod", serveSidecarInjectionForPod)
-	mux.HandleFunc("/api/webhook/inject/deployment", serveSidecarInjectionForDeploy)
-	mux.HandleFunc("/api/webhook/inject/replicaset", serveSidecarInjectionForRs)
-	mux.HandleFunc("/api/webhook/inject/statefulset", serveSidecarInjectionForSts)
-	mux.HandleFunc("/api/webhook/inject/daemonset", serveSidecarInjectionForDs)
-	mux.HandleFunc("/api/webhook/inject/cronjob", serveSidecarInjectionForCj)
-	mux.HandleFunc("/api/webhook/inject/job", serveSidecarInjectionForJob)
-	mux.HandleFunc("/api/webhook/inject/test", serveSidecarInjectionForTest)
-	mux.HandleFunc("/api/webhook/test", serveTest)*/
+	mux.HandleFunc("/api/webhook/metadata", serveMetadata)
+	mux.HandleFunc("/api/webhook/add-serviceaccount/workflowtemplate", serveWorkflowTemplate)
+	/*mux.HandleFunc("/api/webhook/inject/cronjob", serveSidecarInjectionForCj)*/
 
 	// HTTPS 서버 설정
 	whsvr := &http.Server{
