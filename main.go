@@ -162,7 +162,7 @@ func main() {
 
 	//URI에 맞는 handler 함수 호출 - 지금은 한개만 필요
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/webhook/metadata", serveMetadata)
+	mux.HandleFunc("/api/webhook/add-serviceaccount/workflow", serveMetadata)
 	mux.HandleFunc("/api/webhook/add-serviceaccount/workflowtemplate", serveWorkflowTemplate)
 	/*mux.HandleFunc("/api/webhook/inject/cronjob", serveSidecarInjectionForCj)*/
 
