@@ -10,11 +10,11 @@ webhooks:
     service:
       name: hypercloud4-workflow-webhook-svc
       namespace: hypercloud4-system
-      path: /api/webhook/metadata 
+      path: /api/webhook/add-serviceaccount/workflow 
       port: 443
   failurePolicy: Fail
   matchPolicy: Equivalent
-  name: hypercloud4-workflow-webhook-svc.hypercloud4-system.svc
+  name: add-serviceaccount.workflow.svc
   namespaceSelector:
     matchExpressions:
     - key: workflow-webhook
@@ -35,35 +35,35 @@ webhooks:
     scope: '*'
   sideEffects: None
   timeoutSeconds: 10
-  - admissionReviewVersions:
-    - v1beta1
-    clientConfig:
-      caBundle: {{CA_PEM_BASE64}}
-      service:
-        name: hypercloud4-workflow-webhook-svc
-        namespace: hypercloud4-system
-        path: /api/webhook/add-serviceaccount/workflowtemplate
-        port: 443
-    failurePolicy: Fail
-    matchPolicy: Equivalent
-    name: add-serviceaccount.workflowtemplate
-    namespaceSelector:
-      matchExpressions:
-      - key: workflow-webhook
-        operator: NotIn
-        values:
-        - "false"
-    objectSelector: {}
-    reinvocationPolicy: Never
-    rules:
-    - apiGroups:
-      - argoproj.io
-      apiVersions:
-      - v1alpha1
-      operations:
-      - CREATE
-      resources:
-      - workflowtemplate
-      scope: '*'
-    sideEffects: None
-    timeoutSeconds: 10
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    caBundle: {{CA_PEM_BASE64}}
+    service:
+      name: hypercloud4-workflow-webhook-svc
+      namespace: hypercloud4-system
+      path: /api/webhook/add-serviceaccount/workflowtemplate
+      port: 443
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: add-serviceaccount.workflowtemplate
+  namespaceSelector:
+    matchExpressions:
+    - key: workflow-webhook
+      operator: NotIn
+      values:
+      - "false"
+  objectSelector: {}
+  reinvocationPolicy: Never
+  rules:
+  - apiGroups:
+    - argoproj.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    resources:
+    - workflowtemplate
+    scope: '*'
+  sideEffects: None
+  timeoutSeconds: 10

@@ -3,7 +3,7 @@ kind: Service
 metadata:
   annotations:
   name: hypercloud4-workflow-webhook-svc
-  namespace: hypercloud4-system 
+  namespace: argo
   selfLink: /api/v1/namespaces/hypercloud4-system/services/hypercloud4-workflow-webhook-svc
 spec:
   ports:

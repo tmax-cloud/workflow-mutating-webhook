@@ -5,7 +5,7 @@ metadata:
   labels:
     hypercloud4: workflow-webhook
   name: hypercloud4-workflow-webhook
-  namespace: hypercloud4-system
+  namespace: argo
 spec:
   progressDeadlineSeconds: 600
   replicas: 1
