@@ -9,40 +9,20 @@ import (
 	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
 )
 
-type WorkflowTemplate struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata" protobuf:"bytes,1,opt,name=metadata"`
-	Spec	wfv1.WorkflowTemplateSpec `json:"spec" protobuf:"bytes,2,opt,name=spec"`
-}
-
-
-// yaml을 담을 struct
-type Meta struct {
-	metav1.TypeMeta	`json:",inline"`                                                 // kind & apigroup
-	metav1.ObjectMeta	`json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"` // metadata
-	wfv1.WorkflowSpec	`json:"spec" protobuf:"bytes,2,opt,name=spec "`//spec
-}
-
-type WFMeta struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata" protobuf:"bytes,1,opt,name=metadata"`
-	wfv1.WorkflowTemplateSpec `json:"spec" protobuf:"bytes,2,opt,name=spec"`
-}
-
-func AddResourceMeta(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
+func WorkflowTemplateSACheck(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	reviewResponse := v1beta1.AdmissionResponse{}
 
 
 	fmt.Println("check for enter metadata handler")
 	
-	ms := Meta{}
-	//ts := WFMeta{}
-	ws := &WorkflowTemplate{}
+	ms := WorkflowTemplate{}
 	
 	ds := "default-editor"
 	if err := json.Unmarshal(ar.Request.Object.Raw, &ms); err != nil {
 		return ToAdmissionResponse(err) //msg: error
 	}
+
+	ws := &ms
 
 	//수정사항을 담을 구조체 slice
 	var patch []patchOps

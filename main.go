@@ -63,14 +63,14 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 	}
 }
 
-func serveMetadata(w http.ResponseWriter, r *http.Request) {
+func serveWorkflow(w http.ResponseWriter, r *http.Request) {
 	klog.Infof("Http request: method=%s, uri=%s", r.Method, r.URL.Path)
-	serve(w, r, admission.AddResourceMeta)
+	serve(w, r, admission.WorkflowSACheck)
 }
 
 func serveWorkflowTemplate(w http.ResponseWriter, r *http.Request) {
 	klog.Infof("Http request: method=%s, uri=%s", r.Method, r.URL.Path)
-	serve(w, r, admission.AddResourceMeta)
+	serve(w, r, admission.WorkflowTemplateSACheck)
 }
 
 func serveAudit(w http.ResponseWriter, r *http.Request) {
@@ -162,7 +162,7 @@ func main() {
 
 	//URI에 맞는 handler 함수 호출 - 지금은 한개만 필요
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/webhook/add-serviceaccount/workflow", serveMetadata)
+	mux.HandleFunc("/api/webhook/add-serviceaccount/workflow", serveWorkflow)
 	mux.HandleFunc("/api/webhook/add-serviceaccount/workflowtemplate", serveWorkflowTemplate)
 	/*mux.HandleFunc("/api/webhook/inject/cronjob", serveSidecarInjectionForCj)*/
 
