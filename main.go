@@ -162,8 +162,8 @@ func main() {
 
 	//URI에 맞는 handler 함수 호출 - 지금은 한개만 필요
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/webhook/add-serviceaccount/workflow", serveWorkflow)
-	mux.HandleFunc("/api/webhook/add-serviceaccount/workflowtemplate", serveWorkflowTemplate)
+	mux.HandleFunc("/api/webhook/workflow", serveWorkflow)
+	mux.HandleFunc("/api/webhook/workflowtemplate", serveWorkflowTemplate)
 	/*mux.HandleFunc("/api/webhook/inject/cronjob", serveSidecarInjectionForCj)*/
 
 	// HTTPS 서버 설정
