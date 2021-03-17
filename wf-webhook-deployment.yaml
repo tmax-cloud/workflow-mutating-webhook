@@ -28,7 +28,7 @@ spec:
       - env:
         - name: TZ
           value: Asia/Seoul
-        image: atcham/test:testing
+        image: atcham/test:v1.0.5
         imagePullPolicy: Always
         name: hypercloud4-workflow-webhook
         ports:
@@ -50,7 +50,7 @@ spec:
           readOnly: true
       dnsPolicy: ClusterFirst
       nodeSelector:
-        kubernetes.io/hostname: minikube
+        kubernetes.io/hostname: ck-ai1
       restartPolicy: Always
       schedulerName: default-scheduler
       securityContext: {}

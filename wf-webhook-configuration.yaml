@@ -1,7 +1,7 @@
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: hypercloud4-workflow-mutator
+  name: hypercloud4-workflow-webhook-mutator
 webhooks:
 - admissionReviewVersions:
   - v1beta1
@@ -46,7 +46,7 @@ webhooks:
       port: 443
   failurePolicy: Fail
   matchPolicy: Equivalent
-  name: add-serviceaccount.workflowtemplate
+  name: add-serviceaccount.workflowtemplate.svc
   namespaceSelector:
     matchExpressions:
     - key: workflow-webhook
