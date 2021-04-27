@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"runtime/debug"
+	//"runtime/debug"
 	
 	wfv1 "github.com/argoproj/argo/v2/pkg/apis/workflow/v1alpha1"
 	//wfv1 "github.com/argoproj/argo-workflows/pkg/apis/workflow/v1alpha1"
@@ -12,6 +12,7 @@ import (
 	"k8s.io/api/admission/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/klog"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -22,20 +23,28 @@ func WorkflowSACheck(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 
 	fmt.Println("check for enter metadata handler")
 
+	ms := wfv1.Workflow{}
+    
+	if err := json.Unmarshal(ar.Request.Object.Raw, &ms); err != nil {
+		return ToAdmissionResponse(err) //msg: error
+	}
+	nsofworkflow := ms.ObjectMeta.Namespace
+
+	klog.Infof("workflow created in namespace : %s", nsofworkflow)
 	// serviceaccount client-go
 	
 	ds := "default-editor"
-	config, err := rest.InClusterConfig()
+	config1, err := rest.InClusterConfig()
 	if err != nil {
 		panic(err.Error())
 	}
-	clientset, err := kubernetes.NewForConfig(config)
+	client1, err := kubernetes.NewForConfig(config1)
 	if err != nil{
 		panic(err.Error())
 	}
 
 	// argo namespace에서 default-editor 확인
-	_, err = clientset.CoreV1().ServiceAccounts("argo").Get(context.TODO(), ds, metav1.GetOptions{})
+	_, err = client1.CoreV1().ServiceAccounts(nsofworkflow).Get(context.TODO(), ds, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		fmt.Printf("default-editor isn't exist\n")
 		//없을 경우 여기에서 SA 생성코드 작성
@@ -44,11 +53,11 @@ func WorkflowSACheck(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		if err != nil {
 			panic(err)
 		}
-		client, err := kubernetes.NewForConfig(config2)
+		client2, err := kubernetes.NewForConfig(config2)
 		if err != nil {
 			panic(err)
 		}
-		serviceAccountClient := client.CoreV1().ServiceAccounts("argo")
+		serviceAccountClient := client2.CoreV1().ServiceAccounts(nsofworkflow)
 
 		serviceAccount := &corev1.ServiceAccount{
 			ObjectMeta: metav1.ObjectMeta{
@@ -57,16 +66,42 @@ func WorkflowSACheck(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		}
 		result, err := serviceAccountClient.Create(context.TODO(), serviceAccount, metav1.CreateOptions{})
 		
-		if err != nil {
-			defer func() {
-				if r := recover(); r != nil { 
-					fmt.Println("Recovered", r) 
-					debug.PrintStack() 
-				}
-			}()
+		if err != nil {			
 			panic(err)
 		}
 		klog.Infof("Created service account %v.", result.GetObjectMeta().GetName())
+
+		config3, err := rest.InClusterConfig()
+		if err != nil {
+			panic(err)
+		}
+		client3, err := kubernetes.NewForConfig(config3)
+		if err != nil {
+			panic(err)
+		}
+		RbacClient := client3.RbacV1().RoleBindings(nsofworkflow)
+		saRole := &rbacv1.RoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+					Name: "default-editor",
+					Namespace: nsofworkflow,
+			},
+			RoleRef: rbacv1.RoleRef{
+				Kind: "ClusterRole",
+				Name: "kubeflow-edit",
+			},
+			Subjects: []rbacv1.Subject {
+				{
+					Kind: "ServiceAccount",
+					Name: "default-editor",
+					Namespace: nsofworkflow,
+				},
+			},
+		}
+		rbac, err := RbacClient.Create(context.TODO(), saRole, metav1.CreateOptions{})
+		if err != nil {			
+			panic(err)
+		}
+		klog.Infof("role binding created name is : %v.", rbac.GetObjectMeta().GetName())
 		
 
 	} else if err != nil {
@@ -75,15 +110,7 @@ func WorkflowSACheck(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		fmt.Printf("default-editor is exist\n")
 	}
 
-	//service account에 rbac 적용 필요
-
-
-
-	ms := wfv1.Workflow{}
-    
-	if err := json.Unmarshal(ar.Request.Object.Raw, &ms); err != nil {
-		return ToAdmissionResponse(err) //msg: error
-	}
+	
 
 	
 	var patch []patchOps
