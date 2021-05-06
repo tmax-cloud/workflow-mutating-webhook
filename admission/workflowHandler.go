@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	//"runtime/debug"
-	
 	wfv1 "github.com/argoproj/argo/v2/pkg/apis/workflow/v1alpha1"
 	//wfv1 "github.com/argoproj/argo-workflows/pkg/apis/workflow/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -31,8 +31,7 @@ func WorkflowSACheck(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	nsofworkflow := ms.ObjectMeta.Namespace
 
 	klog.Infof("workflow created in namespace : %s", nsofworkflow)
-	// serviceaccount client-go
-	
+		
 	ds := "default-editor"
 	config1, err := rest.InClusterConfig()
 	if err != nil {
@@ -43,12 +42,10 @@ func WorkflowSACheck(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 		panic(err.Error())
 	}
 
-	// argo namespace에서 default-editor 확인
+	// argo namespace에서 default-editor 확인 후 없을 경우 생성
 	_, err = client1.CoreV1().ServiceAccounts(nsofworkflow).Get(context.TODO(), ds, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
-		fmt.Printf("default-editor isn't exist\n")
-		//없을 경우 여기에서 SA 생성코드 작성
-		
+		fmt.Printf("serviceaccont default-editor isn't exist\n")
 		config2, err := rest.InClusterConfig()
 		if err != nil {
 			panic(err)
@@ -80,65 +77,62 @@ func WorkflowSACheck(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 			panic(err)
 		}
 		RbacClient := client3.RbacV1().RoleBindings(nsofworkflow)
-		saRole := &rbacv1.RoleBinding{
-			ObjectMeta: metav1.ObjectMeta{
-					Name: "default-editor",
-					Namespace: nsofworkflow,
-			},
-			RoleRef: rbacv1.RoleRef{
-				Kind: "ClusterRole",
-				Name: "kubeflow-edit",
-			},
-			Subjects: []rbacv1.Subject {
-				{
-					Kind: "ServiceAccount",
-					Name: "default-editor",
-					Namespace: nsofworkflow,
-				},
-			},
-		}
-		rbac, err := RbacClient.Create(context.TODO(), saRole, metav1.CreateOptions{})
-		if err != nil {			
-			panic(err)
-		}
-		klog.Infof("role binding created name is : %v.", rbac.GetObjectMeta().GetName())
-		
 
+		_, err = RbacClient.Get(context.TODO(), ds, metav1.GetOptions{})
+		if errors.IsNotFound(err) {
+			klog.Infof("rolebinding is not exist")
+
+			saRole := &rbacv1.RoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+						Name: "default-editor",
+						Namespace: nsofworkflow,
+				},
+				RoleRef: rbacv1.RoleRef{
+					Kind: "ClusterRole",
+					Name: "kubeflow-edit",
+				},
+				Subjects: []rbacv1.Subject {
+					{
+						Kind: "ServiceAccount",
+						Name: "default-editor",
+						Namespace: nsofworkflow,
+					},
+				},
+			}
+			rbac, err := RbacClient.Create(context.TODO(), saRole, metav1.CreateOptions{})
+			if err != nil {			
+				panic(err)
+			}
+			klog.Infof("role binding created name is : %v.", rbac.GetObjectMeta().GetName())
+
+		}
+		
 	} else if err != nil {
 		panic(err.Error())
 	} else {
 		fmt.Printf("default-editor is exist\n")
 	}
 
-	
-
-	
 	var patch []patchOps
 
-	a := 0
+	
 	if len(ms.Spec.ServiceAccountName) == 0 && ms.Spec.WorkflowTemplateRef == nil {
-		klog.Infof("in if")
 		if len(ms.Spec.Templates) == 0 {
-			klog.Infof("in if, len templates 0")
 			createPatch(&patch, "add", "/spec/serviceAccountName", ds)
 		} else {
-			klog.Infof("in if, len templates != 0")
 			for i := 0 ; i < len(ms.Spec.Templates); i++ {
 				if len(ms.Spec.Templates[i].ServiceAccountName) == 0 {
-					a  = a+1
 					//templates의 항목에 넣어주는 부분
-					//templatestring := "/spec/templates[" + a + "]/serviceAccountName"
-					//klog.Infof("check data for templatestring : %s", templatestring)
-					//createPatch(&patch, "add", templatestring, ds)
+					a := strconv.FormatInt(int64(i),10)
+					templatestring := "/spec/templates/" + a +"/serviceAccountName"
+					klog.Infof("check data for templatestring : %s", templatestring)
+					createPatch(&patch, "add", templatestring, ds)
 				}
-			}
-			if a > 0{
-				createPatch(&patch, "add", "/spec/serviceAccountName", ds)
 			}
 		}
 	}
-	//klog.Infof("check data for ms.Spec : %s", ms.Spec)
 
+	//klog.Infof("check data for ms.Spec : %s", ms.Spec)
 
 	if patchData, err := json.Marshal(patch); err != nil {
 		return ToAdmissionResponse(err) //msg: error
