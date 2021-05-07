@@ -29,7 +29,7 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 			body = data
 		}
 	}
-	klog.Infof("Request body: %s\n", body)
+	//klog.Infof("Request body: %s\n", body)
 
 	contentType := r.Header.Get("Content-Type")
 	if contentType != "application/json" {
@@ -51,7 +51,7 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 
 	respBytes, err := json.Marshal(responseAdmissionReview)
 
-	klog.Infof("Response body: %s\n", respBytes)
+	//klog.Infof("Response body: %s\n", respBytes)
 
 	if err != nil {
 		klog.Error(err)
@@ -149,8 +149,8 @@ var (
 
 func main() {
 	flag.IntVar(&port, "port", 8443, "hypercloud4-workflow-webhook server port")
-	flag.StringVar(&certFile, "certFile", "/run/secrets/tls/server.crt", "hypercloud4-workflow-webhook server cert")
-	flag.StringVar(&keyFile, "keyFile", "/run/secrets/tls/server.key", "x509 Private key file for TLS connection")
+	flag.StringVar(&certFile, "certFile", "/run/secrets/tls/tls.crt", "hypercloud4-workflow-webhook server cert")
+	flag.StringVar(&keyFile, "keyFile", "/run/secrets/tls/tls.key", "x509 Private key file for TLS connection")
 	flag.StringVar(&admission.SidecarContainerImage, "sidecarImage", "fluent/fluent-bit:1.5-debug", "Fluent-bit image name.")
 	flag.Parse()
 
@@ -160,7 +160,7 @@ func main() {
 		klog.Errorf("Failed to load key pair: %s", err)
 	}
 
-	//URI에 맞는 handler 함수 호출 - 지금은 한개만 필요
+	//URI에 맞는 handler 함수 호출
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/webhook/add-serviceaccount/workflow", serveWorkflow)
 	mux.HandleFunc("/api/webhook/add-serviceaccount/workflowtemplate", serveWorkflowTemplate)
@@ -175,14 +175,12 @@ func main() {
 
 	klog.Info("Starting webhook server...")
 
-	fmt.Println("test1")
 	go func() {
-		// if err := whsvr.ListenAndServe(); err != nil { //HTTPS로 서버 시작
 		if err := whsvr.ListenAndServeTLS("", ""); err != nil { //HTTPS로 서버 시작
 			klog.Errorf("Failed to listen and serve webhook server: %s", err)
 		}
 	}()
-	fmt.Println("test2")
+	
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	<-sigCh
