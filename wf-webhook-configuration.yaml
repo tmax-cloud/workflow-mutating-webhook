@@ -2,14 +2,15 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: hypercloud4-workflow-webhook-mutator
+  annotations:
+    cert-manager.io/inject-ca-from-secret: argo/hypercloud4-workflow-webhook-certs
 webhooks:
 - admissionReviewVersions:
   - v1beta1
   clientConfig:
-    caBundle: {{CA_PEM_BASE64}}
     service:
       name: hypercloud4-workflow-webhook-svc
-      namespace: hypercloud4-system
+      namespace: argo
       path: /api/webhook/add-serviceaccount/workflow 
       port: 443
   failurePolicy: Fail
@@ -31,17 +32,16 @@ webhooks:
     operations:
     - CREATE
     resources:
-    - Workflow
+    - workflows
     scope: '*'
   sideEffects: None
   timeoutSeconds: 10
 - admissionReviewVersions:
   - v1beta1
   clientConfig:
-    caBundle: {{CA_PEM_BASE64}}
     service:
       name: hypercloud4-workflow-webhook-svc
-      namespace: hypercloud4-system
+      namespace: argo
       path: /api/webhook/add-serviceaccount/workflowtemplate
       port: 443
   failurePolicy: Fail
@@ -63,7 +63,7 @@ webhooks:
     operations:
     - CREATE
     resources:
-    - workflowtemplate
+    - workflowtemplates
     scope: '*'
   sideEffects: None
   timeoutSeconds: 10
