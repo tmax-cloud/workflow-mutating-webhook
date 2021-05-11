@@ -3,7 +3,7 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: hypercloud4-workflow-webhook-mutator
   annotations:
-    cert-manager.io/inject-ca-from-secret: argo/hypercloud4-workflow-webhook-certs
+    cert-manager.io/inject-ca-from: argo/selfsigned-cert-example
 webhooks:
 - admissionReviewVersions:
   - v1beta1
