@@ -1,0 +1,28 @@
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: selfsigned-cert-example
+  namespace: argo
+  labels:
+    some-annotation: "true"
+spec:
+  secretName: hypercloud4-workflow-webhook-certs
+  duration: 2880h
+  renewBefore: 360h
+  dnsNames:
+    - hypercloud4-workflow-webhook-svc.argo.svc
+    - hypercloud4-workflow-webhook-svc.argo.svc.cluster.local
+    - add-serviceaccount.workflow.svc
+    - add-serviceaccount.workflowtemplate.svc
+  isCA: false
+  keySize: 2048
+  keyAlgorithm: rsa
+  keyEncoding: pkcs1
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+  issuerRef:
+    name: ck-selfsigned-clusterissuer
+    kind: ClusterIssuer
+    group: cert-manager.io
