@@ -6,12 +6,12 @@ metadata:
   labels:
     some-annotation: "true"
 spec:
-  secretName: hypercloud4-workflow-webhook-certs
+  secretName: hypercloud-workflow-webhook-certs
   duration: 2880h
   renewBefore: 360h
   dnsNames:
-    - hypercloud4-workflow-webhook-svc.argo.svc
-    - hypercloud4-workflow-webhook-svc.argo.svc.cluster.local
+    - hypercloud-workflow-webhook-svc.argo.svc
+    - hypercloud-workflow-webhook-svc.argo.svc.cluster.local
     - add-serviceaccount.workflow.svc
     - add-serviceaccount.workflowtemplate.svc
   isCA: false

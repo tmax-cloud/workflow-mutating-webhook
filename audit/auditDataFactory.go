@@ -25,7 +25,7 @@ const (
 	DB_USER     = "audit"
 	DB_PASSWORD = "tmax"
 	DB_NAME     = "audit"
-	HOSTNAME    = "postgres-service.hypercloud4-system.svc"
+	HOSTNAME    = "postgres-service.hypercloud-system.svc"
 	PORT        = 5432
 )
 
@@ -39,7 +39,7 @@ func init() {
 
 func insert(items []audit.Event) {
 	db, err := sql.Open("postgres", pg_con_info)
-	// db, err := sql.Open("mysql", "root:tmax@tcp(mysql-service.hypercloud4-system.svc:3306)/metering?parseTime=true")
+	// db, err := sql.Open("mysql", "root:tmax@tcp(mysql-service.hypercloud-system.svc:3306)/metering?parseTime=true")
 	if err != nil {
 		klog.Error(err)
 	}
@@ -101,7 +101,7 @@ func insert(items []audit.Event) {
 
 func get(query string) (audit.EventList, int64) {
 	db, err := sql.Open("postgres", pg_con_info)
-	// db, err := sql.Open("mysql", "root:tmax@tcp(mysql-service.hypercloud4-system.svc:3306)/metering?parseTime=true")
+	// db, err := sql.Open("mysql", "root:tmax@tcp(mysql-service.hypercloud-system.svc:3306)/metering?parseTime=true")
 	if err != nil {
 		klog.Error(err)
 	}

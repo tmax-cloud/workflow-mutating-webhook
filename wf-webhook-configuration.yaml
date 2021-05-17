@@ -1,7 +1,7 @@
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: hypercloud4-workflow-webhook-mutator
+  name: hypercloud-workflow-webhook-mutator
   annotations:
     cert-manager.io/inject-ca-from: argo/selfsigned-cert-example
 webhooks:
@@ -9,7 +9,7 @@ webhooks:
   - v1beta1
   clientConfig:
     service:
-      name: hypercloud4-workflow-webhook-svc
+      name: hypercloud-workflow-webhook-svc
       namespace: argo
       path: /api/webhook/add-serviceaccount/workflow 
       port: 443
@@ -40,7 +40,7 @@ webhooks:
   - v1beta1
   clientConfig:
     service:
-      name: hypercloud4-workflow-webhook-svc
+      name: hypercloud-workflow-webhook-svc
       namespace: argo
       path: /api/webhook/add-serviceaccount/workflowtemplate
       port: 443

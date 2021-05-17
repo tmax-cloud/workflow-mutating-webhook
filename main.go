@@ -16,8 +16,8 @@ import (
 
 	"k8s.io/api/admission/v1beta1"
 
-	admission "hypercloud4-webhook/admission"
-	audit "hypercloud4-webhook/audit"
+	admission "hypercloud-webhook/admission"
+	audit "hypercloud-webhook/audit"
 )
 
 type admitFunc func(v1beta1.AdmissionReview) *v1beta1.AdmissionResponse
@@ -148,8 +148,8 @@ var (
 )
 
 func main() {
-	flag.IntVar(&port, "port", 8443, "hypercloud4-workflow-webhook server port")
-	flag.StringVar(&certFile, "certFile", "/run/secrets/tls/tls.crt", "hypercloud4-workflow-webhook server cert")
+	flag.IntVar(&port, "port", 8443, "hypercloud-workflow-webhook server port")
+	flag.StringVar(&certFile, "certFile", "/run/secrets/tls/tls.crt", "hypercloud-workflow-webhook server cert")
 	flag.StringVar(&keyFile, "keyFile", "/run/secrets/tls/tls.key", "x509 Private key file for TLS connection")
 	flag.StringVar(&admission.SidecarContainerImage, "sidecarImage", "fluent/fluent-bit:1.5-debug", "Fluent-bit image name.")
 	flag.Parse()

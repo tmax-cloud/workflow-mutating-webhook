@@ -3,8 +3,8 @@ kind: Deployment
 metadata:
   generation: 1
   labels:
-    hypercloud4: workflow-webhook
-  name: hypercloud4-workflow-webhook
+    hypercloud: workflow-webhook
+  name: hypercloud-workflow-webhook
   namespace: argo
 spec:
   progressDeadlineSeconds: 600
@@ -12,7 +12,7 @@ spec:
   revisionHistoryLimit: 10
   selector:
     matchLabels:
-      hypercloud4: workflow-webhook
+      hypercloud: workflow-webhook
   strategy:
     rollingUpdate:
       maxSurge: 25%
@@ -22,7 +22,7 @@ spec:
     metadata:
       creationTimestamp: null
       labels:
-        hypercloud4: workflow-webhook
+        hypercloud: workflow-webhook
     spec:
       serviceAccountName: sa-inferenceservice-reader
       containers:
@@ -31,7 +31,7 @@ spec:
           value: Asia/Seoul
         image: atcham/test:v2.3.10
         imagePullPolicy: Always
-        name: hypercloud4-workflow-webhook
+        name: hypercloud-workflow-webhook
         ports:
         - containerPort: 8443
           name: webhook
@@ -47,7 +47,7 @@ spec:
         terminationMessagePolicy: File
         volumeMounts:
         - mountPath: /run/secrets/tls
-          name: hypercloud4-workflow-webhook-certs
+          name: hypercloud-workflow-webhook-certs
           readOnly: true
       dnsPolicy: ClusterFirst
       restartPolicy: Always
@@ -55,7 +55,7 @@ spec:
       securityContext: {}
       terminationGracePeriodSeconds: 30
       volumes:
-      - name: hypercloud4-workflow-webhook-certs
+      - name: hypercloud-workflow-webhook-certs
         secret:
           defaultMode: 420
-          secretName: hypercloud4-workflow-webhook-certs
+          secretName: hypercloud-workflow-webhook-certs

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"hypercloud4-webhook/util"
+	"hypercloud-webhook/util"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"

@@ -1,4 +1,4 @@
-module hypercloud4-webhook
+module hypercloud-webhook
 
 go 1.13
 
