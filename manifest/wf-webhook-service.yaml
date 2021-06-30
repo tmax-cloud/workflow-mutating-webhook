@@ -1,13 +1,31 @@
 apiVersion: v1
 kind: Service
 metadata:
-  annotations:
+  labels:
+    hypercloud: workflow-webhook
   name: hypercloud-workflow-webhook-svc
-  namespace: argo
-  selfLink: /api/v1/namespaces/argo/services/hypercloud-workflow-webhook-svc
+  namespace: kubeflow
 spec:
   ports:
   - port: 443
+    protocol: TCP
+    targetPort: webhook
+  selector:
+    hypercloud: workflow-webhook
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    hypercloud: workflow-webhook
+  name: hypercloud-workflowtemplate-webhook-svc
+  namespace: kubeflow
+spec:
+  ports:
+  - port: 443
+    protocol: TCP
     targetPort: webhook
   selector:
     hypercloud: workflow-webhook

@@ -1,8 +1,8 @@
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: selfsigned-cert-example
-  namespace: argo
+  namespace: kubeflow
   labels:
     some-annotation: "true"
 spec:
@@ -10,14 +10,16 @@ spec:
   duration: 2880h
   renewBefore: 360h
   dnsNames:
-    - hypercloud-workflow-webhook-svc.argo.svc
-    - hypercloud-workflow-webhook-svc.argo.svc.cluster.local
-    - add-serviceaccount.workflow.svc
-    - add-serviceaccount.workflowtemplate.svc
-  isCA: false
-  keySize: 2048
-  keyAlgorithm: rsa
-  keyEncoding: pkcs1
+    - hypercloud-workflow-webhook-svc.kubeflow.svc
+    - hypercloud-workflow-webhook-svc.kubeflow.svc.cluster.local
+    - hypercloud-workflowtemplate-webhook-svc.kubeflow.svc
+    - hypercloud-workflowtemplate-webhook-svc.kubeflow.svc.cluster.local
+    - hypercloud-workflow-webhook-svc
+    - hypercloud-workflowtemplate-webhook-svc
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
   usages:
     - digital signature
     - key encipherment
